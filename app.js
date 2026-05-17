@@ -1,5 +1,6 @@
 import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7.7/dist/wavesurfer.esm.js'
 import RegionsPlugin from 'https://unpkg.com/wavesurfer.js@7.7/dist/plugins/regions.esm.js'
+import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7.7/dist/plugins/timeline.esm.js'
 
 // 1. Wavesurfer-Instanz erstellen
 const ws = WaveSurfer.create({
@@ -10,6 +11,29 @@ const ws = WaveSurfer.create({
     // WICHTIG: Fügen Sie diese Zeile hier ein!
     sampleRate: 44100
 });
+
+// Das importierte Modul direkt verwenden
+const wsTimeline = ws.registerPlugin(
+    // WICHTIG: Nutzen Sie direkt den Namen aus Ihrem import-Befehl!
+    TimelinePlugin.create({
+        // Optional: Falls Sie die Leiste automatisch einfügen lassen möchten,
+        // können Sie den Container-Parameter hier auch komplett weglassen.
+        container: '#wave-timeline', // Wo die Skala gezeichnet werden soll
+        formatTime: (seconds) => {
+            // Optional: Zeitformat anpassen (z. B. 01:30 statt 90)
+            const minutes = Math.floor(seconds / 60)
+            const secs = Math.floor(seconds % 60)
+            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`
+        },
+        timeInterval: 5, // Primäre Zeitstriche alle 5 Sekunden (wird bei Zoom autom. angepasst)
+        primaryLabelInterval: 10, // Textbeschriftung alle 10 Sekunden
+        style: {
+            color: '#666', // Textfarbe der Zahlen
+            fontSize: '12px'
+        }
+    })
+)
+
 
 // 2. Regions-Plugin aktivieren (für die Markierungen)
 const wsRegions = ws.registerPlugin(RegionsPlugin.create());
