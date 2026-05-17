@@ -1,6 +1,10 @@
 import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7.7/dist/wavesurfer.esm.js'
 import RegionsPlugin from 'https://unpkg.com/wavesurfer.js@7.7/dist/plugins/regions.esm.js'
 import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7.7/dist/plugins/timeline.esm.js'
+//import JSZip from 'https://cdn.jsdelivr.net/npm/@progress/jszip-esm@1.0.4/dist/jszip.min.js'
+import JSZip from 'https://jsdelivr.net'
+
+
 
 // 1. Wavesurfer-Instanz erstellen
 const ws = WaveSurfer.create({
@@ -364,3 +368,82 @@ ws.on('timeupdate', (currentTime) => {
 ws.on('interaction', () => {
     activePlayingRegion = null
 })
+
+// Function to extract a specific region into its own AudioBuffer
+function extractRegionBuffer(region, originalBuffer) {
+    const sampleRate = originalBuffer.sampleRate;
+    const numChannels = originalBuffer.numberOfChannels;
+
+    const startSample = Math.floor(region.start * sampleRate);
+    const endSample = Math.floor(region.end * sampleRate);
+    const durationSamples = endSample - startSample;
+
+    // Create a temporary AudioContext to generate the new buffer
+    const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+    const regionBuffer = ctx.createBuffer(numChannels, durationSamples, sampleRate);
+
+    // Copy the PCM data for each channel
+    for (let channel = 0; channel < numChannels; channel++) {
+        const originalData = originalBuffer.getChannelData(channel);
+        const regionData = regionBuffer.getChannelData(channel);
+
+        for (let i = 0; i < durationSamples; i++) {
+            regionData[i] = originalData[startSample + i];
+        }
+    }
+    return regionBuffer;
+}
+
+// --- ZIP EXPORT TRIGGER ---
+
+const exportBtnZip = document.getElementById('btn-export-zip')
+exportBtnZip.addEventListener('click', async () => {
+    // 1. Get and sort regions
+    const regions = wsRegions.getRegions().sort((a, b) => a.start - b.start);
+
+    if (regions.length === 0) {
+        alert("Bitte markiere zuerst mindestens einen Bereich!");
+        return;
+    }
+
+    const originalBuffer = ws.getDecodedData();
+    
+    // 2. Initialize JSZip
+    const zip = new JSZip();
+
+    // 3. Loop through all regions and add them to the ZIP
+    regions.forEach((region, index) => {
+        // Extract the audio buffer for just this region
+        const regionBuffer = extractRegionBuffer(region, originalBuffer);
+        
+        // Convert it to a WAV Blob using your existing function
+        const wavBlob = bufferToWav(regionBuffer);
+
+        // Name the file dynamically based on its order and timestamps
+        const startTime = region.start.toFixed(1);
+        const endTime = region.end.toFixed(1);
+        const fileName = `region_${index + 1}_(${startTime}s-${endTime}s).wav`;
+
+        // Add the file to the ZIP archive
+        zip.file(fileName, wavBlob);
+    });
+
+    // 4. Generate the ZIP file asynchronous and trigger the download
+    try {
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        
+        // Create a temporary download link
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(zipBlob);
+        downloadLink.download = "extracted_regions.zip";
+        
+        // Trigger download and clean up
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(downloadLink.href);
+    } catch (error) {
+        console.error("Fehler beim Erstellen der ZIP-Datei:", error);
+        alert("Das ZIP-Archiv konnte nicht erstellt werden.");
+    }
+});
