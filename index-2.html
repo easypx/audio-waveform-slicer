@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Waveform Slicer - GitHub Demo</title>
+    <style>
+        body { font-family: sans-serif; margin: 30px; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #waveform { background: #fafafa; margin: 20px 0; border: 1px solid #ddd; border-radius: 4px; min-height: 128px; }
+        .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        button { padding: 10px 16px; font-size: 14px; border: none; border-radius: 4px; background-color: #4F4A85; color: white; cursor: pointer; font-weight: bold; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        button:hover:not(:disabled) { background-color: #383351; }
+    </style>
+    
+    <!-- Wir laden die Dateien direkt aus deinem Repository (Same-Origin) -->
+    <script src="wavesurfer.min.js"></script>
+    <script src="regions.esm.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h1>Audio Waveform Slicer</h1>
+    <p>Lade eine Audiodatei hoch und ziehe mit der Maus über die Wellenform, um Bereiche zu markieren. Klicke auf eine Markierung zum Vorhören.</p>
+    
+    <div class="controls">
+        <input type="file" id="audio-file" accept="audio/*">
+        <button id="btn-play" disabled>Play / Pause</button> 
+        <button id="btn-export" disabled>Ausgewählte Bereiche als ZIP exportieren</button>
+    </div>
+
+    <div id="waveform"></div>
+</div>
+
+<script>
+    // 1. Wavesurfer-Instanz initialisieren
+    const ws = WaveSurfer.create({
+        container: '#waveform',
+        waveColor: '#A09BC9',
+        progressColor: '#4F4A85',
+        responsive: true,
+        height: 150
+    });
+
+    // 2. Regions-Plugin aktivieren
+    const wsRegions = ws.registerPlugin(WaveSurfer.Regions.create());
+
+    const playBtn = document.getElementById('btn-play');
+    const exportBtn = document.getElementById('btn-export');
+
+    // 3. Datei-Upload verarbeiten
+    document.getElementById('audio-file').addEventListener('change', function(e) {
+        const files = e.target.files;
+        if (files && files[0]) {
+            const fileUrl = URL.createObjectURL(files[0]);
+            ws.load(fileUrl);
+            playBtn.disabled = false;
+            exportBtn.disabled = false;
+        }
+    });
+
+    // 4. Bereiche zeichnen erlauben, sobald Audio geladen ist
+    ws.on('decode', () => {
+        wsRegions.enableDragSelection({
+            color: 'rgba(79, 74, 133, 0.2)' // Schönes, transparentes Lila passend zur Welle
+        });
+    });
+
+    // 5. Play/Pause Steuerung
+    playBtn.addEventListener('click', () => ws.playPause());
+
+    // 6. Region bei Klick abspielen
+    wsRegions.on('region-click', (region, e) => {
+        e.stopPropagation(); 
+        region.play();       
+    });
+</script>
+</body>
+</html>

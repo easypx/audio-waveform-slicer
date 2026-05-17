@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Waveform Slicer</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        #waveform {
+            background: #eee;
+            margin: 20px 0;
+            border: 1px solid #ccc;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+</head>
+
+<body>
+
+    <h1>Audio Waveform Slicer</h1>
+
+    <!-- NEU: Format-Auswahl -->
+    <label for="format-select">Format:</label>
+    <select id="format-select">
+        <option value="wav">WAV (.wav)</option>
+        <option value="mp3">MP3 (.mp3)</option>
+    </select>
+
+    <div class="controls">
+        <input type="file" id="audio-file" accept="audio/*">
+        <button id="btn-export" disabled>Ausgewählte Bereiche als ZIP exportieren</button>
+        <button id="btn-play" disabled>Play / Pause</button>
+    </div>
+    </div>
+
+    <!-- Hier wird die Wellenform hineingezogen -->
+    <div id="waveform"></div>
+
+    <!-- Container für die Regionsliste -->
+    <h3>Markierte Bereiche:</h3>
+    <ul id="regions-list"></ul>
+
+    <script type="module" src="app.js"></script>
+
+</body>
+
+</html>
