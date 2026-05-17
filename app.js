@@ -1,9 +1,9 @@
 import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7.7/dist/wavesurfer.esm.js'
 import RegionsPlugin from 'https://unpkg.com/wavesurfer.js@7.7/dist/plugins/regions.esm.js'
 import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7.7/dist/plugins/timeline.esm.js'
-//import {JSZip} from 'https://unpkg.com/@progress/jszip-esm@1.0.4/dist/jszip-esm2015.js' //fehler
+import {JSZip} from 'https://unpkg.com/@progress/jszip-esm@1.0.4/dist/jszip-esm2015.js' //fehler
 //import JSZip from 'https://cdn.jsdelivr.net/npm/@progress/jszip-esm@1.0.4/dist/jszip.min.js' //fehler
-import JSZip from 'https://unpkg.com' //browser hoert nicht auf zu laden
+//import JSZip from 'https://unpkg.com' //browser hoert nicht auf zu laden
 
 
 
