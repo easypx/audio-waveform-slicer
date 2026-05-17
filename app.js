@@ -23,7 +23,7 @@ const wsTimeline = ws.registerPlugin(
         formatTimeCallback: (seconds) => {
             const minutes = Math.floor(seconds / 60)
             const secs = Math.floor(seconds % 60)
-            return `${minutes}min ${secs < 10 ? '0' : ''}${secs}s`
+            return `${minutes}m ${secs < 10 ? '0' : ''}${secs}s`
         },
         timeInterval: 5, // Primäre Zeitstriche alle 5 Sekunden (wird bei Zoom autom. angepasst)
         primaryLabelInterval: 10, // Textbeschriftung alle 10 Sekunden
