@@ -2,7 +2,7 @@ import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7.7/dist/wavesurfer.esm.
 import RegionsPlugin from 'https://unpkg.com/wavesurfer.js@7.7/dist/plugins/regions.esm.js'
 import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7.7/dist/plugins/timeline.esm.js'
 //import JSZip from 'https://cdn.jsdelivr.net/npm/@progress/jszip-esm@1.0.4/dist/jszip.min.js'
-import JSZip from 'https://jsdelivr.net'
+import JSZip from 'https://unpkg.com'
 
 
 
