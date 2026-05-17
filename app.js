@@ -19,11 +19,11 @@ const wsTimeline = ws.registerPlugin(
         // Optional: Falls Sie die Leiste automatisch einfügen lassen möchten,
         // können Sie den Container-Parameter hier auch komplett weglassen.
         container: '#wave-timeline', // Wo die Skala gezeichnet werden soll
-        formatTime: (seconds) => {
-            // Optional: Zeitformat anpassen (z. B. 01:30 statt 90)
+        // HIER DIE ÄNDERUNG: "Callback" am Ende hinzufügen!
+        formatTimeCallback: (seconds) => {
             const minutes = Math.floor(seconds / 60)
             const secs = Math.floor(seconds % 60)
-            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`
+            return `${minutes}min ${secs < 10 ? '0' : ''}${secs}s`
         },
         timeInterval: 5, // Primäre Zeitstriche alle 5 Sekunden (wird bei Zoom autom. angepasst)
         primaryLabelInterval: 10, // Textbeschriftung alle 10 Sekunden
