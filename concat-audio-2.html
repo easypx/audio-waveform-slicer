@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Merger & Player</title>
+    <!-- lamejs Bibliothek für MP3-Konvertierung im Browser laden -->
+    <!-- <script src="https://cloudflare.com"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+    <!-- NEU (ogg als lokale Datei einbinden): -->
+    <script src="vmsg.js" type="module"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 10px;
+            background: #fafafa;
+            color: #333;
+        }
+
+        #drop-zone {
+            border: 2px dashed #007bff;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            background: #fff;
+            border-radius: 8px;
+            transition: all 0.2s ease-in-out;
+        }
+
+        #audio-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .audio-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            margin-bottom: 8px;
+            background: #fff;
+            cursor: grab;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .audio-item.dragging {
+            opacity: 0.5;
+            background: #e9ecef;
+        }
+
+        .title {
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        button,
+        select {
+            padding: 6px 12px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background: #f0f0f0;
+        }
+
+        .remove-btn {
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .remove-btn:hover {
+            background: #dc3545;
+            color: white;
+        }
+
+        .export-section {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #format-select {
+            font-size: 16px;
+            padding: 11px;
+        }
+
+        #export-btn {
+            flex-grow: 1;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            font-size: 16px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        #export-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .status {
+            font-size: 12px;
+            color: #666;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Audio Dateien zusammenfügen</h2>
+
+    <div id="drop-zone">
+        <strong>Dateien hierher ziehen</strong> oder klicken zum Auswählen (MP3, WAV & OGG)
+        <!-- ERWEITERT: .ogg und audio/ogg im Filter hinzugefügt -->
+        <input type="file" id="file-input" multiple accept="audio/*, .mp3, .wav, .ogg, audio/ogg" style="display:none">
+    </div>
+
+    <ul id="audio-list"></ul>
+
+    <div class="export-section">
+        <select id="format-select">
+            <option value="wav">Format: WAV (.wav)</option>
+            <option value="mp3">Format: MP3 (.mp3)</option>
+            <option value="ogg">Format: OGG (.ogg)</option>
+        </select>
+        <button id="export-btn" disabled>Dateien zusammenfügen & exportieren</button>
+    </div>
+
+    <a href="index.html">Waveform Slice</a>
+    <br>
+    <a href="#">Concat Audio</a>
+
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const audioList = document.getElementById('audio-list');
+        const exportBtn = document.getElementById('export-btn');
+        const formatSelect = document.getElementById('format-select');
+
+        let audioFiles = [];
+        let audioCtx = null;
+        let currentSource = null;
+        let currentlyPlayingId = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        window.addEventListener('dragover', (e) => e.preventDefault(), false);
+        window.addEventListener('drop', (e) => e.preventDefault(), false);
+
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        dropZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#28a745';
+            dropZone.style.background = '#e8f5e9';
+        });
+
+        dropZone.addEventListener('dragover', (e) => e.preventDefault());
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = '#007bff';
+            dropZone.style.background = '#fff';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#007bff';
+            dropZone.style.background = '#fff';
+            if (e.dataTransfer.files.length > 0) {
+                handleFiles(e.dataTransfer.files);
+            }
+        });
+
+        async function handleFiles(files) {
+            initAudio();
+            const fileArray = Array.from(files);
+
+            for (let file of fileArray) {
+                const id = Math.random().toString(36).substr(2, 9);
+                const item = { id, file, buffer: null, status: 'Lädt...' };
+
+                audioFiles.push(item);
+                renderList();
+
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    item.buffer = await audioCtx.decodeAudioData(arrayBuffer);
+                    item.status = 'Bereit';
+                } catch (err) {
+                    console.error("Fehler beim Dekodieren von " + file.name, err);
+                    item.status = 'Fehler beim Laden';
+                }
+                renderList();
+            }
+        }
+
+        function renderList() {
+            audioList.innerHTML = '';
+            audioFiles.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'audio-item';
+                li.draggable = true;
+                li.dataset.id = item.id;
+
+                li.addEventListener('dragstart', handleDragStart);
+                li.addEventListener('dragover', handleDragOver);
+                li.addEventListener('drop', handleDrop);
+                li.addEventListener('dragend', handleDragEnd);
+
+                const isPlaying = currentlyPlayingId === item.id;
+                const isReady = item.buffer !== null;
+
+                li.innerHTML = `
+                    <div class="controls">
+                        <button class="play-btn" ${!isReady ? 'disabled' : ''}>${isPlaying ? '⏹ Stop' : '▶ Play'}</button>
+                    </div>
+                    <span class="title" title="${item.file.name}">${item.file.name} <span class="status" style="color: ${isReady ? 'green' : 'orange'}">(${item.status})</span></span>
+                    <div class="controls">
+                        <button class="up-btn" ${index === 0 ? 'disabled' : ''}>▲</button>
+                        <button class="down-btn" ${index === audioFiles.length - 1 ? 'disabled' : ''}>▼</button>
+                        <button class="remove-btn">❌</button>
+                    </div>
+                `;
+
+                li.querySelector('.play-btn').onclick = (e) => { e.stopPropagation(); togglePlay(item); };
+                li.querySelector('.up-btn').onclick = (e) => { e.stopPropagation(); moveItem(index, -1); };
+                li.querySelector('.down-btn').onclick = (e) => { e.stopPropagation(); moveItem(index, 1); };
+                li.querySelector('.remove-btn').onclick = (e) => { e.stopPropagation(); removeItem(index); };
+
+                audioList.appendChild(li);
+            });
+            updateExportButton();
+        }
+
+        function togglePlay(item) {
+            initAudio();
+            if (currentSource && currentlyPlayingId === item.id) {
+                stopAllAudio();
+                return;
+            }
+            stopAllAudio();
+            if (!item.buffer) return;
+
+            currentSource = audioCtx.createBufferSource();
+            currentSource.buffer = item.buffer;
+            currentSource.connect(audioCtx.destination);
+            currentlyPlayingId = item.id;
+            renderList();
+
+            currentSource.start(0);
+            currentSource.onended = () => { if (currentlyPlayingId === item.id) stopAllAudio(); };
+        }
+
+        function stopAllAudio() {
+            if (currentSource) { try { currentSource.stop(); } catch (e) { } currentSource = null; }
+            currentlyPlayingId = null;
+            renderList();
+        }
+
+        function moveItem(index, direction) {
+            stopAllAudio();
+            const targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= audioFiles.length) return;
+            const temp = audioFiles[index];
+            audioFiles[index] = audioFiles[targetIndex];
+            audioFiles[targetIndex] = temp;
+            renderList();
+        }
+
+        function removeItem(index) {
+            stopAllAudio();
+            audioFiles.splice(index, 1);
+            renderList();
+        }
+
+        function updateExportButton() {
+            exportBtn.disabled = audioFiles.length === 0 || audioFiles.some(f => !f.buffer);
+        }
+
+        let dragSrcEl = null;
+        function handleDragStart(e) { dragSrcEl = this; this.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+        function handleDragOver(e) { e.preventDefault(); }
+        function handleDrop(e) {
+            e.preventDefault();
+            if (dragSrcEl !== this) {
+                stopAllAudio();
+                const fromIndex = audioFiles.findIndex(f => f.id === dragSrcEl.dataset.id);
+                const toIndex = audioFiles.findIndex(f => f.id === this.dataset.id);
+                const [movedItem] = audioFiles.splice(fromIndex, 1);
+                audioFiles.splice(toIndex, 0, movedItem);
+                renderList();
+            }
+        }
+        function handleDragEnd() { this.classList.remove('dragging'); }
+
+        // EXPORT LOGIK
+        exportBtn.onclick = async () => {
+            stopAllAudio();
+            initAudio();
+
+            let totalLength = 0;
+            let maxChannels = 1;
+            let sampleRate = audioFiles[0].buffer.sampleRate;
+
+            audioFiles.forEach(item => {
+                totalLength += item.buffer.length;
+                if (item.buffer.numberOfChannels > maxChannels) { maxChannels = item.buffer.numberOfChannels; }
+            });
+            exportBtn.innerText = "Verarbeite... Bitte warten...";
+            exportBtn.disabled = true;
+            const offlineCtx = new OfflineAudioContext(maxChannels, totalLength, sampleRate); let currentTime = 0;
+            audioFiles.forEach(item => {
+                const source = offlineCtx.createBufferSource();
+                source.buffer = item.buffer; source.connect(offlineCtx.destination);
+                source.start(currentTime); currentTime += item.buffer.duration;
+            });
+
+            //
+
+            const renderedBuffer = await offlineCtx.startRendering();
+            const format = formatSelect.value;
+
+            if (format === 'wav') {
+                downloadBlob(bufferToWav(renderedBuffer), 'zusammengefuegt.wav');
+            } else if (format === 'mp3') {
+                downloadBlob(bufferToMp3(renderedBuffer), 'zusammengefuegt.mp3');
+            } else if (format === 'ogg') {
+                //exportBtn.innerText = "Kodiere OGG via WebAssembly...";
+                exportBtn.innerText = "Kodiere OGG nativ 1:1 via MediaRecorder... Bitte haben Sie etwas Geduld!";
+                try {
+                    // Ruft die neue, schnelle Funktion auf und wartet auf das Ergebnis
+                    // const oggBlob = await bufferToOggFast(renderedBuffer); // noch fehlerhaft !!!
+
+                    // Ruft den ogg Export via MediaRecorder auf und wartet auf das Ergebnis
+                    const oggBlob = await bufferToOgg(renderedBuffer, function (oggBlob) {
+                        // Dieser Code wird ausgeführt, sobald die Konvertierung fertig ist
+                        console.log("Konvertierung abgeschlossen!", oggBlob);
+                        downloadBlob(oggBlob, 'zusammengefuegt.ogg');
+                    });
+
+                } catch (e) {
+                    alert("Der schnelle OGG-Export ist fehlgeschlagen. Bitte nutzen Sie WAV oder MP3.");
+                    console.error(e);
+                    exportBtn.innerText = "Dateien zusammenfügen & exportieren";
+                    updateExportButton();
+                }
+            }
+        };
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; a.click();
+            exportBtn.innerText = "Dateien zusammenfügen & exportieren"; updateExportButton();
+        }
+        // WAV-Konverter // 
+        function bufferToWav(buffer) {
+            let numOfChan = buffer.numberOfChannels, length = buffer.length * numOfChan * 2 + 44, bufferArr = new ArrayBuffer(length), view = new DataView(bufferArr), channels = [], i, sample, offset = 0, pos = 0;
+            function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+            function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+            setUint32(0x46464952);
+            setUint32(length - 8);
+            setUint32(0x45564157);
+            setUint32(0x20746d66);
+            setUint32(16);
+            setUint16(1);
+            setUint16(numOfChan);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * numOfChan);
+            setUint16(numOfChan * 2); setUint16(16);
+            setUint32(0x61746164);
+            setUint32(length - pos - 4);
+            for (i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
+            while (pos < length) {
+                for (i = 0; i < numOfChan; i++) {
+                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                    sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF; view.setInt16(pos, sample, true); pos += 2;
+                } offset++;
+            }
+            return new Blob([bufferArr], { type: 'audio/wav' });
+        }
+        // MP3-Konverter (lamejs) // 
+        function bufferToMp3(buffer) {
+            const channels = buffer.numberOfChannels;
+            const sampleRate = buffer.sampleRate;
+            const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, 128);
+            const mp3Data = []; const sampleBlockSize = 1152;
+            const leftData = buffer.getChannelData(0);
+            const rightData = channels > 1 ? buffer.getChannelData(1) : leftData;
+            const convertFloatToInt16 = (float32Arr) => {
+                const int16Arr = new Int16Array(float32Arr.length);
+                for (let i = 0; i < float32Arr.length; i++) { let s = Math.max(-1, Math.min(1, float32Arr[i])); int16Arr[i] = s < 0 ? s * 0x8000 : s * 0x7FFF; } return int16Arr;
+            }; const leftInt16 = convertFloatToInt16(leftData); const rightInt16 = convertFloatToInt16(rightData); for (let i = 0; i < leftInt16.length; i += sampleBlockSize) { const leftChunk = leftInt16.subarray(i, i + sampleBlockSize); const rightChunk = rightInt16.subarray(i, i + sampleBlockSize); let mp3buf = channels === 1 ? mp3encoder.encodeBuffer(leftChunk) : mp3encoder.encodeBuffer(leftChunk, rightChunk); if (mp3buf.length > 0) mp3Data.push(mp3buf); } const mp3buf = mp3encoder.flush(); if (mp3buf.length > 0) mp3Data.push(mp3buf); return new Blob(mp3Data, { type: 'audio/mp3' });
+        }
+        // NEU: Nativer OGG-Export via MediaRecorder // 
+        function bufferToOgg(buffer, callback) {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            const dest = ctx.createMediaStreamDestination(); source.connect(dest);
+            // Prüfe bevorzugten Codec (Opus/Vorbis in OGG) // 
+            let mimeType = 'audio/ogg;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/ogg';
+            if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
+            // Fallback falls OGG gar nicht geht // 
+            const mediaRecorder = new MediaRecorder(dest.stream, { mimeType: mimeType });
+            const chunks = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+            mediaRecorder.onstop = () => { callback(new Blob(chunks, { type: mimeType })); };
+            mediaRecorder.start(); source.start(0);
+
+            // Stoppe die Aufnahme exakt am Ende des Audio-Buffers // 
+            setTimeout(() => {
+                mediaRecorder.stop();
+                source.stop(); ctx.close();
+            }, buffer.duration * 1000 + 200);
+        }
+        // NEU: Ultraschneller OGG-Export via WebAssembly (Offline)
+        async function bufferToOggFast(buffer) {
+            // Greift auf die korrigierte lokale vmsg-Referenz zu
+            const recorder = new vmsg.Recorder({
+                wasmURL: "vmsg.wasm"
+            });
+            await recorder.init();
+
+            const channels = buffer.numberOfChannels;
+            const leftData = buffer.getChannelData(0);
+            const rightData = channels > 1 ? buffer.getChannelData(1) : leftData;
+
+            const interleaved = new Float32Array(buffer.length * channels);
+            for (let i = 0; i < buffer.length; i++) {
+                interleaved[i * channels] = leftData[i];
+                if (channels > 1) interleaved[i * channels + 1] = rightData[i];
+            }
+
+            // Diese Zeile stürzt nun nicht mehr ab!
+            const oggBlob = await recorder.encode(interleaved, buffer.sampleRate);
+            await recorder.close();
+            return oggBlob;
+        }
+
+
+    </script>
