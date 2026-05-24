@@ -1,0 +1,7 @@
+Audio data preparation for Sonauto uploads.
+
+1. Audio slice: Extract specific sections and export them concatenated or individually.
+
+2. Concat: Loads multiple audio files, can change their order, and saves the concatenated audio in various formats.
+
+![Vorschau des Projekts](https://githubusercontent.com)
