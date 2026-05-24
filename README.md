@@ -6,5 +6,6 @@ Audio data preparation for Sonauto uploads.
 
 ![Vorschau des Projekts](https://github.com/easypx/audio-waveform-slicer/blob/main/screen-audio-slicer.jpg?raw=true)
 
-https://easypx.github.io/audio-waveform-slicer/index.html
+🔗 **[Live Demo hier ausprobieren](https://easypx.github.io/audio-waveform-slicer/index.html)**
+
 
