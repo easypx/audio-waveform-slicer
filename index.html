@@ -5,27 +5,137 @@
     <meta charset="UTF-8">
     <title>Audio Waveform Slicer</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-
     <style>
+        /* 1. GLOBALE STYLES & LAYOUT */
         body {
             font-family: sans-serif;
             margin: 20px;
+            background: #F0F4F8;
+            /* Tech-Blue Hintergrund */
+            color: #1E293B;
+            /* Dunkler Text für besseren Kontrast */
         }
 
         #waveform {
             background: #eee;
             margin: 20px 0;
             border: 1px solid #ccc;
+            border-radius: 4px;
         }
 
-        .controls {
-            margin-bottom: 20px;
+        .controls-section {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            /* Erlaubt das automatische, flüssige Umbrechen */
         }
 
         .link-section {
             margin-top: 20px;
         }
+
+        .combo-select {
+            font-size: 16px;
+            padding: 11px;
+        }
+
+
+        /* 2. UNIVERSELLE BUTTONS & INTERAKTIONEN (Basis & Feedbacks) */
+        .btn,
+        .custom-file-upload {
+            /* Standard-Variablen für Farben */
+            --btn-bg: #475569;
+            /* Standard Anthrazit */
+            --btn-color: #F8FAFC;
+            /* Standard Off-White */
+
+            background-color: var(--btn-bg);
+            color: var(--btn-color);
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+            transition: filter 0.2s ease, transform 0.1s ease;
+        }
+
+        /* Spezifische Strukturen, die sich unterscheiden */
+        .btn {
+            flex-grow: 1;
+            padding: 12px;
+        }
+
+        .custom-file-upload {
+            display: inline-block;
+            padding: 10px 20px;
+        }
+
+        .custom-file-upload input[type="file"] {
+            display: none;
+            /* Versteckt das Standard-Input komplett */
+        }
+
+        /* Gemeinsame visuelle Feedbacks für Buttons & Upload-Feld */
+        .btn:hover,
+        .custom-file-upload:hover {
+            filter: brightness(85%);
+            /* Dunkelt jede Hintergrundfarbe automatisch ab */
+        }
+
+        .btn:active,
+        .custom-file-upload:active {
+            transform: scale(0.98);
+            /* Physischer Klick-Effekt */
+            filter: brightness(75%);
+            /* Noch etwas dunkler beim Klick */
+        }
+
+        /* Zustand für deaktivierte Elemente (HTML-Attribut und Klasse) */
+        .btn:disabled,
+        .btn.disabled,
+        .combo-select:disabled {
+            background-color: #ccc !important;
+            color: #666 !important;
+            cursor: not-allowed;
+            pointer-events: none;
+            /* Verhindert Hover-Effekte im gesperrten Zustand */
+            opacity: 0.7;
+        }
+
+
+        /* 3. FARBKLASSEN (Steuern nur noch die Variablen) */
+        .color-1 {
+            --btn-bg: #007bff;
+            /* Blau */
+        }
+
+        .color-2 {
+            --btn-bg: #dc3545;
+            /* Rot */
+        }
+
+        .color-3 {
+            --btn-bg: #28a745;
+            /* Grün */
+        }
+
+        /* Reine Textfarben-Klassen (falls separat benötigt) */
+        .color-4 {
+            color: #F8FAFC;
+        }
+
+        .color-5 {
+            color: #ccc;
+        }
+
+        .color-6 {
+            color: #666;
+        }
     </style>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 </head>
 
@@ -33,20 +143,10 @@
 
     <h1>Audio Waveform Slicer</h1>
 
-    <!-- NEU: Format-Auswahl -->
-    <label for="format-select">Format:</label>
-    <select id="format-select">
-        <option value="wav">WAV (.wav)</option>
-        <option value="mp3">MP3 (.mp3)</option>
-    </select>
-
-    <div class="controls">
-        <input type="file" id="audio-file" accept="audio/*">
-        <button id="btn-export" disabled>Ausgewählte Bereiche verknuepfen und exportieren</button>
-        <button id="btn-export-zip">Ausgewählte Bereiche einzeln als Zip exportieren</button>
-        <button id="btn-play" disabled>Play / Pause</button>
-    </div>
-    </div>
+    <label class="custom-file-upload color-1">
+        <input type="file" id="audio-file" autocomplete="off" accept="audio/*" />
+        Datei auswählen...
+    </label>
 
     <!-- Hier wird die Wellenform hineingezogen -->
     <div id="waveform"></div>
@@ -54,12 +154,33 @@
     <!-- Container für die Zeitskala -->
     <div id="wave-timeline"></div>
 
+    <div class="controls-section">
+        <button id="btn-play" disabled class="btn color-2">Play / Pause</button>
+    </div>
     <!-- Container für die Regionsliste -->
     <h3>Markierte Bereiche:</h3>
     <ul id="regions-list"></ul>
-    <div class="link-section">
-        <a href="concat-audio-2.html">Concat Audio</a>
+
+    <div class="controls-section">
+        <!-- NEU: Format-Auswahl -->
+        <label for="format-select">Format:</label>
+        <select id="format-select" class="combo-select" disabled>
+            <option value="wav">WAV (.wav)</option>
+            <option value="mp3">MP3 (.mp3)</option>
+        </select>
+        <button id="btn-export" class="btn color-1" disabled>Ausgewählte Bereiche verknuepfen und exportieren</button>
+        <button id="btn-export-zip" class="btn color-3" disabled>Ausgewählte Bereiche als Zip exportieren</button>
     </div>
+
+    <div class="link-section">
+        <!-- target="_blank" öffnet den neuen Tab -->
+        <a href="concat-audio-2.html" target="_blank">🡪 Concat Audio</a>
+    </div>
+
+    <script>
+        // Gibt diesem Tab einen festen Namen für den Rücksprung
+        window.name = "hauptfenster";
+    </script>
 
     <script type="module" src="app.js"></script>
 

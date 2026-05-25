@@ -52,6 +52,8 @@ document.getElementById('audio-file').addEventListener('change', function (e) {
         const fileUrl = URL.createObjectURL(file);
         ws.load(fileUrl);
         document.getElementById('btn-export').disabled = false;
+        document.getElementById('btn-export-zip').disabled = false;
+        document.getElementById('format-select').disabled = false;
     }
 });
 
