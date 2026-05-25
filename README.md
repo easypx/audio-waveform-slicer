@@ -4,7 +4,7 @@
 
 **2. Concat Audio**: Loads multiple audio files, can change their order, and saves the concatenated audio in various formats.
 
-![Vorschau des Projekts](https://github.com/easypx/audio-waveform-slicer/blob/main/screen-audio-slicer.jpg?raw=true)
+![Vorschau des Projekts](https://github.com/easypx/audio-waveform-slicer/blob/main/screen-audio-slicer-2.jpg?raw=true)
 
 🔗 **[Live Demo hier ausprobieren](https://easypx.github.io/audio-waveform-slicer/index.html)**
 
