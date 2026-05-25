@@ -1,6 +1,6 @@
 # 🎵 Audio data preparation for Sonauto uploads
 
-## This toolchan is a simple replacement for an external audio editor like Audacity
+This toolchan is a simplier replacement for an external audio editor like Audacity.
 
 **1. Audio Slicer**: Extract specific sections and export them concatenated or individually. Imagine picking out the most important parts (assets) from your song, e.g., verse, chorus, solo.
 
